@@ -22,7 +22,7 @@
  * For more details, see http://www.derekmolloy.ie/
  */
 
-#include "ADXL345_function.h"
+#include "ADXL345.h"
 #include <iostream>
 #include <unistd.h>
 #include <math.h>
@@ -98,7 +98,7 @@ double getCPUTemperature() {      //fetching CPU temp
  * @param msb an unsigned character that contains the most significant byte
  * @param lsb an unsigned character that contains the least significant byte
  */
-short ADXL345_function::combineRegisters(unsigned char msb, unsigned char lsb){
+short ADXL345::combineRegisters(unsigned char msb, unsigned char lsb){
    //shift the MSB left by 8 bits and OR with LSB
    return ((short)msb<<8)|(short)lsb;
 }
@@ -108,16 +108,16 @@ short ADXL345_function::combineRegisters(unsigned char msb, unsigned char lsb){
  * factors due to the resolution and gravity range to determine gravity weighted values that are used
  * to calculate the angular pitch and roll values in degrees.
  */
-void ADXL345_function::calculatePitchAndRoll(){
+void ADXL345::calculatePitchAndRoll(){
 	float gravity_range;
-	switch(ADXL345_function::range){
-		case ADXL345_function::PLUSMINUS_16_G: gravity_range=32.0f; break;
-		case ADXL345_function::PLUSMINUS_8_G: gravity_range=16.0f; break;
-		case ADXL345_function::PLUSMINUS_4_G: gravity_range=8.0f; break;
+	switch(ADXL345::range){
+		case ADXL345::PLUSMINUS_16_G: gravity_range=32.0f; break;
+		case ADXL345::PLUSMINUS_8_G: gravity_range=16.0f; break;
+		case ADXL345::PLUSMINUS_4_G: gravity_range=8.0f; break;
 		default: gravity_range=4.0f; break;
 	}
     float resolution = 1024.0f;
-    if (this->resolution==ADXL345_function::HIGH) resolution = 8192.0f; //13-bit resolution
+    if (this->resolution==ADXL345::HIGH) resolution = 8192.0f; //13-bit resolution
     float factor = gravity_range/resolution;
 
     float accXg = this->accelerationX * factor;
@@ -135,7 +135,7 @@ void ADXL345_function::calculatePitchAndRoll(){
  * in the future.
  * @return 0 if the register is updated successfully
  */
-int ADXL345_function::updateRegisters(){
+int ADXL345::updateRegisters(){
    //update the DATA_FORMAT register
    char data_format = 0x00;  //+/- 2g with normal resolution
    //Full_resolution is the 3rd LSB
@@ -151,7 +151,7 @@ int ADXL345_function::updateRegisters(){
  * @param I2CBus The bus number that the ADXL345 device is on - typically 0 or 1
  * @param I2CAddress The address of the ADLX345 device (default 0x53, but can be altered)
  */
-ADXL345_function::ADXL345_function(unsigned int I2CBus, unsigned int I2CAddress):
+ADXL345::ADXL345(unsigned int I2CBus, unsigned int I2CAddress):
 	I2CDevice(I2CBus, I2CAddress){   // this member initialisation list calls the parent constructor
 	this->I2CAddress = I2CAddress;
 	this->I2CBus = I2CBus;
@@ -161,8 +161,8 @@ ADXL345_function::ADXL345_function(unsigned int I2CBus, unsigned int I2CAddress)
 	this->pitch = 0.0f;
 	this->roll = 0.0f;
 	this->registers = NULL;
-	this->range = ADXL345_function::PLUSMINUS_16_G;
-	this->resolution = ADXL345_function::HIGH;
+	this->range = ADXL345::PLUSMINUS_16_G;
+	this->resolution = ADXL345::HIGH;
 	this->writeRegister(POWER_CTL, 0x08);
 	this->updateRegisters();
 }
@@ -173,7 +173,7 @@ ADXL345_function::ADXL345_function(unsigned int I2CBus, unsigned int I2CAddress)
  * and pass them to the combineRegisters() method to be processed.
  * @return 0 if the registers are successfully read and -1 if the device ID is incorrect.
  */
-int ADXL345_function::readSensorState(){
+int ADXL345::readSensorState(){
 	this->registers = this->readRegisters(BUFFER_SIZE, 0x00);
 	if(*this->registers!=0xe5){
 		perror("ADXL345: Failure Condition - Sensor ID not Verified");
@@ -182,8 +182,8 @@ int ADXL345_function::readSensorState(){
 	this->accelerationX = this->combineRegisters(*(registers+DATAX1), *(registers+DATAX0));
 	this->accelerationY = this->combineRegisters(*(registers+DATAY1), *(registers+DATAY0));
 	this->accelerationZ = this->combineRegisters(*(registers+DATAZ1), *(registers+DATAZ0));
-	this->resolution = (ADXL345_function::RESOLUTION) (((*(registers+DATA_FORMAT))&0x08)>>3);
-	this->range = (ADXL345_function::RANGE) ((*(registers+DATA_FORMAT))&0x03);
+	this->resolution = (ADXL345::RESOLUTION) (((*(registers+DATA_FORMAT))&0x08)>>3);
+	this->range = (ADXL345::RANGE) ((*(registers+DATA_FORMAT))&0x03);
 	this->calculatePitchAndRoll();
 	return 0;
 }
@@ -192,7 +192,7 @@ int ADXL345_function::readSensorState(){
  * Set the ADXL345 gravity range according to the RANGE enumeration
  * @param range One of the four possible gravity ranges defined by the RANGE enumeration
  */
-void ADXL345_function::setRange(ADXL345_function::RANGE range) {
+void ADXL345::setRange(ADXL345::RANGE range) {
 	this->range = range;
 	updateRegisters();
 }
@@ -201,18 +201,18 @@ void ADXL345_function::setRange(ADXL345_function::RANGE range) {
  * Set the ADXL345 resolution according to the RESOLUTION enumeration
  * @param resolution either HIGH or NORMAL resolution. HIGH resolution is only available if the range is set to +/- 16g
  */
-void ADXL345_function::setResolution(ADXL345_function::RESOLUTION resolution) {
+void ADXL345::setResolution(ADXL345::RESOLUTION resolution) {
 	this->resolution = resolution;
 	updateRegisters();
 }
 
 /**
  * Useful debug method to display the pitch and roll values in degrees on a single standard output line
- * @param No_iterations The number of 0.1s No_iterations to take place.
+ * @param iterations The number of 0.1s iterations to take place.
  */
-void ADXL345_function::displayPitchAndRoll(int No_iterations){
+void ADXL345::displayPitchAndRoll(int iterations){
 	int count = 0;
-	while(count < No_iterations){
+	while(count < iterations){
 	      cout << "Pitch:"<< this->getPitch() << " Roll:" << this->getRoll() << "     \r"<<flush;
 	      usleep(100000);
 	      this->readSensorState();
@@ -221,78 +221,57 @@ void ADXL345_function::displayPitchAndRoll(int No_iterations){
 }
 
 
-
-
-int ADXL345_function::Publish_Message(int No_of_iterations)
-
-{
-
-int c=0;
-
-
-
-while(c<No_of_iterations)
-{
-
-    this->readSensorState();
-
-    MQTTClient CLIENT1;
-
-    
-    MQTTClient_connectOptions options = MQTTClient_connectOptions_initializer;
-    MQTTClient_message message = MQTTClient_message_initializer;
-    MQTTClient_deliveryToken token;
-    MQTTClient_create(&client, ADDRESS, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL);
-    MQTTClient_willOptions WILL = MQTTClient_willOptions_initializer; 
-
-    char Error_TEXT [100];
-
-    sprintf(Error_TEXT, "\n Publishing interrupted! \n");
-    
-    WILL.topicName = myTopic;
-	WILL.message = Error_TEXT;
-	options.will = &WILL;
-    options.keepAliveInterval = 30;
-    options.cleansession = 1;
-    options.username = soumya;
-    options.password = Kaka@soumya07;
-    WILL.qos = QOS;
-    
-    int conn_Status;
-
-    if ((conn_Status = MQTTClient_connect(CLIENT1, &options)) != MQTTCLIENT_SUCCESS) {
-      cout << "Failed connecting to the client!, return code " << conn_Status << endl;
-
+int ADXL345::addpublish(int iteration) {
+	
+	int count = 0;
+	int rc;
+	while(count< iteration){
+	this->readSensorState();
+   char str_payload[100];          
+   MQTTClient client;
+   MQTTClient_connectOptions opts = MQTTClient_connectOptions_initializer;
+   MQTTClient_message pubmsg = MQTTClient_message_initializer;
+   MQTTClient_deliveryToken token;
+   MQTTClient_create(&client, ADDRESS, CLIENTID, MQTTCLIENT_PERSISTENCE_NONE, NULL);
+   MQTTClient_willOptions will = MQTTClient_willOptions_initializer; 
+	char errormessage[50]; 
+	sprintf(errormessage, "\n Publish interruption Error!");
+	will.topicName = TOPIC;
+	will.message = errormessage;
+	opts.will = &will;
+   opts.keepAliveInterval = 20;
+   opts.cleansession = 1;
+   opts.username = AUTHMETHOD;
+   opts.password = AUTHTOKEN;
+   will.qos = QOS;
+   
+   if ((rc = MQTTClient_connect(client, &opts)) != MQTTCLIENT_SUCCESS) {
+      cout << "Failed to connect, return code " << rc << endl;
+      cout<< "Error -1, check your connection details";
    }
-    
-    else
-
-    {
-    char Payload[100];
-
-      sprintf(Payload, "{\"CPUTemperature\": %f }, {\"X-axis\": %i }, {\"Y-axis\": %i }, {\"Z-axis\": %i }, ", getCPUTemperature(), this->accelerationX, this->accelerationY, this->accelerationZ);
+   
+   sprintf(str_payload, "{\"CPUTemp\": %f }, {\"x-axis\": %i }, {\"y-axis\": %i }, {\"z-axis\": %i }, ", getCPUTemperature(), this->accelerationX, this->accelerationY, this->accelerationZ);
  
-   message .payload = Payload;
-   message .payloadlen = strlen(Payload);
-   message .qos = QOS;
-   message .retained = 0;
-   MQTTClient_publishMessage(CLIENT1, myTopic, &message , &token);
+   pubmsg.payload = str_payload;
+   pubmsg.payloadlen = strlen(str_payload);
+   pubmsg.qos = QOS;
+   pubmsg.retained = 0;
+   MQTTClient_publishMessage(client, TOPIC, &pubmsg, &token);
    cout << "Waiting for up to " << (int)(TIMEOUT/1000) <<
         " seconds for publication of " << str_payload <<
         " \non topic " << TOPIC << " for ClientID: " << CLIENTID << endl;
-   conn_Status = MQTTClient_waitForCompletion(CLIENT1, token, TIMEOUT);
+   rc = MQTTClient_waitForCompletion(client, token, TIMEOUT);
    cout << "Message with token " << (int)token << " delivered." << endl;
-   MQTTClient_disconnect(CLIENT1, 10000);
-   MQTTClient_destroy(&CLIENT1);
+   MQTTClient_disconnect(client, 10000);
+   MQTTClient_destroy(&client);
    count ++;
-
-    }
-
-    return 0;
-
+   
+}
+return rc;
 }
 
-}
-ADXL345_function::~ADXL345_function() {}
+
+ADXL345::~ADXL345() {}
 
 } /* namespace exploringRPi */
+
